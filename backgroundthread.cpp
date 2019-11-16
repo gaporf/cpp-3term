@@ -229,7 +229,6 @@ void BackgroundThread::grepFile(QString path, QString curPattern, std::vector<in
         std::unique_lock<std::mutex> lg(m);
         lg.unlock();
         int m = curPattern.size();
-
         QTextStream stream(&file);
         size_t numOfLine = 1;
         while (!stream.atEnd())
