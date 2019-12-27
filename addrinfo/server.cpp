@@ -3,7 +3,6 @@
 //
 
 #include "server.h"
-#include "addrinfo_raii.h"
 
 #include <sys/socket.h>
 #include <sys/epoll.h>
@@ -142,16 +141,15 @@ void server::client::delete_timer() {
 }
 
 std::vector<std::string> server::handle(const std::string &request) {
-    int status;
     addrinfo hints{};
     memset(&hints, 0, sizeof(addrinfo));
-    addrinfo_raii server_info;
-    auto servinfo = server_info.get_addrinfo();
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    status = getaddrinfo(request.c_str(), "http", &hints, &servinfo);
+    addrinfo *server_info;
+    int status = getaddrinfo(request.c_str(), "http", &hints, &server_info);
     if (status != 0) {
+        freeaddrinfo(server_info);
         if (status != -2) {
             return {"There is a mistake while getting information about website " + request + ", the error code is " + std::to_string(status) + "\n"};
         } else {
@@ -160,7 +158,7 @@ std::vector<std::string> server::handle(const std::string &request) {
     }
     std::vector<std::string> ans;
     ans.emplace_back("The IP addresses for " + request + '\n');
-    for (auto p = servinfo; p != nullptr; p = p->ai_next) {
+    for (auto p = server_info; p != nullptr; p = p->ai_next) {
         char buf[1024];
         inet_ntop(p->ai_family, &(reinterpret_cast<sockaddr_in *>(p->ai_addr)->sin_addr),
                   buf, sizeof(buf));
@@ -168,6 +166,6 @@ std::vector<std::string> server::handle(const std::string &request) {
         address.append("\n");
         ans.emplace_back(address);
     }
-    server_info.free();
+    freeaddrinfo(server_info);
     return ans;
 }
