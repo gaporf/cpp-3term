@@ -6,7 +6,7 @@
 #define ADDRINFO_SERVER_SERVER_H
 
 #include "socket_raii.h"
-#include "timer_raii.h"
+#include "epoll_raii.h"
 
 #include <map>
 #include <list>
@@ -22,53 +22,45 @@
 #include <thread>
 
 struct server {
-    explicit server(uint16_t port);
+    explicit server(uint16_t port, epoll_raii &e);
 
     ~server();
 
-    [[nodiscard]] int get_fd() const;
-
-    void check_socket(int socket);
-
-    std::pair<int, int> create_new_socket();
-
-    [[nodiscard]] int get_timer_fd(int socket);
-
-    void kill_client(int socket);
-
-    void set_epfd(int epfd);
-
 private:
     struct client {
-        explicit client(int socket);
+        client(int socket, epoll_raii &epfd, std::list<client> *ptr_to_list);
 
         ~client();
 
         bool operator==(client const &rhs);
 
-        [[nodiscard]] int get_fd() const;
+        void set_timer();
+
+        void delete_timer();
+
+        std::list<client> *ptr_to_list;
+        epoll_raii &epfd;
+        socket_raii fd;
+
+        int const TIMEOUT = 60 * 10;
+        itimerspec ts;
+        bool is_waiting;
+        socket_raii timer_fd;
 
         bool is_queued;
-        std::optional<pid_t> get_pid;
-        timer_raii timer_fd;
-        socket_raii fd;
+        std::optional<pid_t> pid;
+        std::mutex m;
         std::queue<std::string> client_requests;
+        std::function<void()> handle_client, kill_client;
     };
 
-    int epfd;
+    epoll_raii &epfd;
     uint16_t port;
     socket_raii server_socket;
 
-    std::map<int, client *> link_to_client;
     std::list<client> list_of_clients;
 
-    std::set<pthread_t> threads;
-    std::condition_variable is_ready;
-    std::mutex m;
-    std::queue<client *> ready_clients;
-    std::thread handle_clients;
-
-    void add_request(int socket, std::string const &request);
+    std::function<void()> add_new_socket;
 
     static std::vector<std::string> handle(std::string const &request);
 };

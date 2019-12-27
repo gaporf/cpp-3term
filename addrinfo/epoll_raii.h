@@ -6,25 +6,22 @@
 #define ADDRINFO_SERVER_EPOLL_RAII_H
 
 #include <map>
-
-#include "server.h"
-#include "socket_raii.h"
+#include <functional>
 
 struct epoll_raii {
     epoll_raii();
 
     ~epoll_raii();
 
-    void add_server(server &srv);
+    void add_event(int socket, std::function<void()> *ptr);
+
+    void delete_event(int socket);
 
     void execute();
 
 private:
-    void add_event(int socket);
 
     int fd, signal_fd;
-    std::map<int, server *> get_server;
-    std::map<int, int> get_timer;
 };
 
 

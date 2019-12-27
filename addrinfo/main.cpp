@@ -3,8 +3,10 @@
 
 int main() {
     epoll_raii er;
-    server f(3234);
-    er.add_server(f);
-    er.execute();
+    server f(3238, er);
+    server g(4000, er);
+    while (true) {
+        er.execute();
+    }
     return 0;
 }

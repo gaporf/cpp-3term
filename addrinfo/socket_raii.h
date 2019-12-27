@@ -7,11 +7,14 @@
 
 
 #include <cstdint>
+#include <sys/timerfd.h>
 
 struct socket_raii {
     socket_raii();
 
     explicit socket_raii(int server_socket);
+
+    socket_raii(int timeout, itimerspec &ts);
 
     socket_raii(socket_raii const &rhs) = delete;
 

@@ -16,5 +16,4 @@ add_executable(
         epoll_raii.h
         addrinfo_raii.cpp
         addrinfo_raii.h
-        timer_raii.cpp
-        timer_raii.h)
+)
