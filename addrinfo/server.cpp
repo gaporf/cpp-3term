@@ -149,7 +149,6 @@ std::vector<std::string> server::handle(const std::string &request) {
     addrinfo *server_info;
     int status = getaddrinfo(request.c_str(), "http", &hints, &server_info);
     if (status != 0) {
-        freeaddrinfo(server_info);
         if (status != -2) {
             return {"There is a mistake while getting information about website " + request + ", the error code is " + std::to_string(status) + "\n"};
         } else {
@@ -158,13 +157,18 @@ std::vector<std::string> server::handle(const std::string &request) {
     }
     std::vector<std::string> ans;
     ans.emplace_back("The IP addresses for " + request + '\n');
-    for (auto p = server_info; p != nullptr; p = p->ai_next) {
-        char buf[1024];
-        inet_ntop(p->ai_family, &(reinterpret_cast<sockaddr_in *>(p->ai_addr)->sin_addr),
-                  buf, sizeof(buf));
-        std::string address(buf);
-        address.append("\n");
-        ans.emplace_back(address);
+    try {
+        for (auto p = server_info; p != nullptr; p = p->ai_next) {
+            char buf[1024];
+            inet_ntop(p->ai_family, &(reinterpret_cast<sockaddr_in *>(p->ai_addr)->sin_addr),
+                      buf, sizeof(buf));
+            std::string address(buf);
+            address.append("\n");
+            ans.emplace_back(address);
+        }
+    } catch (std::exception &e) {
+        freeaddrinfo(server_info);
+        throw e;
     }
     freeaddrinfo(server_info);
     return ans;

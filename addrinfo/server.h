@@ -24,13 +24,21 @@
 struct server {
     explicit server(uint16_t port, epoll_raii &e);
 
+    server(server const &rhs) = delete;
+
     ~server();
+
+    server &operator=(server const &rhs) = delete;
 
 private:
     struct client {
         client(int socket, epoll_raii &epfd, std::list<client> *ptr_to_list);
 
+        client(client const &rhs) = delete;
+
         ~client();
+
+        client &operator=(client const &rhs) = delete;
 
         bool operator==(client const &rhs);
 
