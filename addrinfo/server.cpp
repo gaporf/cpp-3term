@@ -61,29 +61,30 @@ server::client::client(int socket, epoll_raii &epfd, std::list<client> *ptr_to_l
         ts(),
         is_waiting(false),
         timer_fd(TIMEOUT, ts),
-        is_queued(false),
         handle_client([this]() {
             char buf[1024];
             int rc = recv(fd.get_fd(), buf, sizeof(buf), 0);
             if (rc < 0) {
                 std::cout << "Could not get information by socket " << fd.get_fd();
             }
+            if (strncmp(buf, "exit", 4) == 0) {
+                kill_client();
+                return;
+            }
             std::string request(buf, rc - 2);
             std::unique_lock<std::mutex> lg(m);
             client_requests.push(request);
-            if (!is_queued) {
-                is_queued = true;
+            if (!pid.has_value()) {
                 delete_timer();
                 std::thread th([this] {
                     pid.emplace(getpid());
                     for (;;) {
                         std::unique_lock<std::mutex> lg(m);
                         if (client_requests.empty()) {
-                            is_queued = false;
                             pid.reset();
                             set_timer();
                             break;
-                        } else {
+                        } else {    
                             std::string request = client_requests.front();
                             client_requests.pop();
                             lg.unlock();
@@ -113,8 +114,10 @@ server::client::~client() {
     if (fd.get_fd() != -1) {
         this->epfd.delete_event(fd.get_fd());
     }
-    delete_timer();
     std::unique_lock<std::mutex> lg(m);
+    if (is_waiting) {
+        delete_timer();
+    }
     if (pid.has_value()) {
         kill(pid.value(), SIGTERM);
     }
@@ -150,25 +153,21 @@ std::vector<std::string> server::handle(const std::string &request) {
     int status = getaddrinfo(request.c_str(), "http", &hints, &server_info);
     if (status != 0) {
         if (status != -2) {
-            return {"There is a mistake while getting information about website " + request + ", the error code is " + std::to_string(status) + "\n"};
+            return {"There is a mistake while getting information about website " + request + ", the error code is " + std::to_string(status) +
+                    "\n"};
         } else {
             return {"Incorrect address of website " + request + '\n'};
         }
     }
     std::vector<std::string> ans;
     ans.emplace_back("The IP addresses for " + request + '\n');
-    try {
-        for (auto p = server_info; p != nullptr; p = p->ai_next) {
-            char buf[1024];
-            inet_ntop(p->ai_family, &(reinterpret_cast<sockaddr_in *>(p->ai_addr)->sin_addr),
-                      buf, sizeof(buf));
-            std::string address(buf);
-            address.append("\n");
-            ans.emplace_back(address);
-        }
-    } catch (std::exception &e) {
-        freeaddrinfo(server_info);
-        throw e;
+    for (auto p = server_info; p != nullptr; p = p->ai_next) {
+        char buf[1024];
+        inet_ntop(p->ai_family, &(reinterpret_cast<sockaddr_in *>(p->ai_addr)->sin_addr),
+                  buf, sizeof(buf));
+        std::string address(buf);
+        address.append("\n");
+        ans.emplace_back(address);
     }
     freeaddrinfo(server_info);
     return ans;

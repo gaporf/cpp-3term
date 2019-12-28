@@ -14,6 +14,4 @@ add_executable(
         socket_raii.h
         epoll_raii.cpp
         epoll_raii.h
-        addrinfo_raii.cpp
-        addrinfo_raii.h
 )

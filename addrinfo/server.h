@@ -55,7 +55,6 @@ private:
         bool is_waiting;
         socket_raii timer_fd;
 
-        bool is_queued;
         std::optional<pid_t> pid;
         std::mutex m;
         std::queue<std::string> client_requests;

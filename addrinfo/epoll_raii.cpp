@@ -4,7 +4,6 @@
 
 #include "epoll_raii.h"
 
-#include <sys/epoll.h>
 #include <sys/signalfd.h>
 #include <stdexcept>
 #include <unistd.h>
@@ -45,9 +44,9 @@ epoll_raii::~epoll_raii() {
     }
 }
 
-void epoll_raii::add_event(int socket, std::function<void()> *ptr) {
+void epoll_raii::add_event(int socket, std::function<void()> *ptr, int name_of_event) {
     epoll_event ev{};
-    ev.events = EPOLLIN;
+    ev.events = name_of_event;
     ev.data.ptr = ptr;
     int status = epoll_ctl(fd, EPOLL_CTL_ADD, socket, &ev);
     if (status != 0) {
@@ -72,7 +71,7 @@ void epoll_raii::execute() {
             int cur_socket = events[i].data.fd;
             if (cur_socket == signal_fd) {
                 exit(0);
-            } else {
+            } else if (events[i].events) {
                 auto *ptr = reinterpret_cast<std::function<void()> *>(events[i].data.ptr);
                 (*ptr)();
             }

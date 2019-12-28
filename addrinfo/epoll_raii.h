@@ -5,15 +5,15 @@
 #ifndef ADDRINFO_SERVER_EPOLL_RAII_H
 #define ADDRINFO_SERVER_EPOLL_RAII_H
 
-#include <map>
 #include <functional>
+#include <sys/epoll.h>
 
 struct epoll_raii {
     epoll_raii();
 
     ~epoll_raii();
 
-    void add_event(int socket, std::function<void()> *ptr);
+    void add_event(int socket, std::function<void()> *ptr, int name_of_event = EPOLLIN);
 
     void delete_event(int socket);
 
